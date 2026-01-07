@@ -10,6 +10,25 @@ const router = express.Router();
 let inMemoryUsers = [];
 let nextUserId = 1;
 
+// Initialize default admin
+(async () => {
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash('admin123', salt);
+        inMemoryUsers.push({
+            _id: 'owner_1',
+            name: 'Admin User',
+            email: 'admin@bharatbazar.com',
+            password: hashedPassword,
+            role: 'owner',
+            createdAt: new Date()
+        });
+        console.log('👑 Default Admin initialized: admin@bharatbazar.com / admin123');
+    } catch (err) {
+        console.error('Failed to initialize admin:', err);
+    }
+})();
+
 // Helper to check if MongoDB is connected
 const isMongoConnected = () => {
     return global.mongoose?.connection?.readyState === 1;
@@ -17,11 +36,16 @@ const isMongoConnected = () => {
 
 // Register
 router.post('/register', async (req, res) => {
+    console.log('📝 Register attempt:', req.body);
     try {
         const { name, email, password } = req.body;
+        if (!name || !email || !password) {
+            console.log('❌ Missing fields');
+            return res.status(400).json({ message: 'All fields are required' });
+        }
 
         if (isMongoConnected()) {
-            // Use MongoDB
+            console.log('💽 Using MongoDB for register');
             const existingUser = await User.findOne({ email });
             if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
@@ -42,14 +66,25 @@ router.post('/register', async (req, res) => {
                 message: 'User registered successfully'
             });
         } else {
-            // Use in-memory storage
+            console.log('💾 Using in-memory storage for register');
             const existingUser = inMemoryUsers.find(u => u.email === email);
-            if (existingUser) return res.status(400).json({ message: 'User already exists' });
+            if (existingUser) {
+                console.log('❌ User already exists:', email);
+                return res.status(400).json({ message: 'User already exists' });
+            }
 
+            console.log('🔒 Hashing password...');
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
+            console.log('✅ Password hashed');
 
+            // If inMemoryUsers only has the default admin, the next user should be 'user'
+            // Logic: if there is NO owner, make this one owner. But we just added an owner. 
+            // So any new registration will effectively be a 'user' unless we change logic.
+            // Let's keep the logic: if list is empty -> owner. But list is not empty now.
+            // So new registrations will be 'user'. Correct.
             const role = inMemoryUsers.length === 0 ? 'owner' : 'user';
+            
             const newUser = {
                 _id: String(nextUserId++),
                 name,
@@ -60,8 +95,15 @@ router.post('/register', async (req, res) => {
             };
 
             inMemoryUsers.push(newUser);
+            console.log('✅ User added to memory:', newUser);
 
+            console.log('🔑 Signing token...');
+            if (!process.env.JWT_SECRET) {
+                 console.warn('⚠️ JWT_SECRET missing in auth.js, using fallback');
+                 process.env.JWT_SECRET = 'fallback_secret';
+            }
             const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+            console.log('✅ Token signed');
 
             res.status(201).json({
                 token,
@@ -70,8 +112,8 @@ router.post('/register', async (req, res) => {
             });
         }
     } catch (err) {
-        console.error('Registration error:', err);
-        res.status(500).json({ error: err.message });
+        console.error('🔥 Registration error:', err);
+        res.status(500).json({ error: err.message, stack: err.stack });
     }
 });
 
@@ -111,6 +153,64 @@ router.post('/login', async (req, res) => {
         }
     } catch (err) {
         console.error('Login error:', err);
+        res.status(500).json({ error: err.message });
+    }
+    });
+// Social Login (Mock)
+router.post('/social', async (req, res) => {
+    console.log('🌐 Social login attempt:', req.body);
+    try {
+        const { provider, name, email } = req.body;
+        
+        let user;
+        if (isMongoConnected()) {
+            console.log('💽 Using MongoDB for social login');
+            user = await User.findOne({ email });
+            if (!user) {
+                console.log('🆕 Creating new social user in Mongo');
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(Math.random().toString(36), salt);
+                
+                const userCount = await User.countDocuments();
+                const role = userCount === 0 ? 'owner' : 'user';
+                
+                user = new User({ name, email, password: hashedPassword, role });
+                await user.save();
+            }
+        } else {
+             console.log('💾 Using in-memory storage for social login');
+             user = inMemoryUsers.find(u => u.email === email);
+             if (!user) {
+                 console.log('🆕 Creating new social user in memory');
+                 const salt = await bcrypt.genSalt(10);
+                 const hashedPassword = await bcrypt.hash(Math.random().toString(36), salt);
+                 
+                 const role = inMemoryUsers.length === 0 ? 'owner' : 'user';
+                 
+                 user = {
+                     _id: String(nextUserId++),
+                     name,
+                     email,
+                     password: hashedPassword,
+                     role,
+                     createdAt: new Date()
+                 };
+                 inMemoryUsers.push(user);
+             } else {
+                 console.log('✅ Found existing social user in memory:', user.name);
+             }
+        }
+
+        console.log('🔑 Signing token for social user:', user._id);
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+        res.json({
+            token,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role }
+        });
+
+    } catch (err) {
+        console.error('🔥 Social Login error:', err);
         res.status(500).json({ error: err.message });
     }
 });

@@ -78,6 +78,29 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const loginWithSocial = async (provider, socialData) => {
+        try {
+            const res = await fetch('/api/auth/social', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider, ...socialData })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                setToken(data.token);
+                setCurrentUser(data.user);
+                return { success: true, message: `Successfully logged in with ${provider}` };
+            } else {
+                return { success: false, message: data.message || 'Social login failed' };
+            }
+        } catch (err) {
+            console.error('Social login error:', err);
+            return { success: false, message: 'Network error. Please try again.' };
+        }
+    };
+
     const logout = () => {
         setToken(null);
         setCurrentUser(null);
@@ -116,6 +139,7 @@ export const AuthProvider = ({ children }) => {
         token,
         login,
         register,
+        loginWithSocial,
         logout,
         promoteUser,
         canEditContent,

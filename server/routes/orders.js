@@ -96,6 +96,63 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Helper function to send order confirmation
+const sendOrderConfirmation = (order) => {
+    const itemsList = order.items.map(item => 
+        `${item.name} x ${item.quantity} - ₹${item.price * item.quantity}`
+    ).join('\n');
+    
+    const emailMessage = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    BHARAT SUPER BAZAR
+    Order Confirmation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dear ${order.customerName},
+
+Your order has been confirmed! ✅
+
+Order Number: #${order.orderNumber}
+Order Date: ${new Date(order.createdAt).toLocaleDateString('en-IN')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ORDER DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${itemsList}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOTAL AMOUNT: ₹${order.totalAmount}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Thank you for shopping with us!
+
+For any queries, please contact:
+📧 Email: support@bharatbazar.com
+📞 Phone: +91-XXXXXXXXXX
+
+Regards,
+Bharat Super Bazar Team
+Family Shopping Destination
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    `;
+
+    const smsMessage = `Dear ${order.customerName}, Your order #${order.orderNumber} has been confirmed! Total: ₹${order.totalAmount}. Thank you for shopping at Bharat Super Bazar! - Team BSB`;
+
+    // Mock email sending (in production, use nodemailer or similar)
+    console.log('\n📧 ===== EMAIL SENT =====');
+    console.log(`To: ${order.customerEmail}`);
+    console.log(`Subject: Order Confirmed - #${order.orderNumber}`);
+    console.log(emailMessage);
+    console.log('========================\n');
+
+    // Mock SMS sending (in production, use Twilio or similar)
+    console.log('\n📱 ===== SMS SENT =====');
+    console.log(`To: ${order.customerPhone}`);
+    console.log(smsMessage);
+    console.log('======================\n');
+};
+
 // Update order status (Admin only)
 router.patch('/:id/status', verifyToken, canEdit, async (req, res) => {
     try {
@@ -112,6 +169,11 @@ router.patch('/:id/status', verifyToken, canEdit, async (req, res) => {
                 return res.status(404).json({ message: 'Order not found' });
             }
             
+            // Send confirmation if order is completed
+            if (status === 'completed') {
+                sendOrderConfirmation(order);
+            }
+            
             res.json(order);
         } else {
             const order = inMemoryOrders.find(o => o._id === req.params.id);
@@ -121,6 +183,12 @@ router.patch('/:id/status', verifyToken, canEdit, async (req, res) => {
 
             order.status = status;
             order.updatedAt = new Date();
+            
+            // Send confirmation if order is completed
+            if (status === 'completed') {
+                sendOrderConfirmation(order);
+            }
+            
             res.json(order);
         }
     } catch (err) {
