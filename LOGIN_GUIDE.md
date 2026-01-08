@@ -9,7 +9,7 @@
 **Email:** `devendradhur85@gmail.com`  
 **Password:** `Dev@750`  
 **Role:** Owner (Full Access)  
-**Name:** Devendra Dhurve
+**Name:** Devendra Dhurvey
 
 ### How to Login:
 

@@ -4,13 +4,16 @@ A full-stack e-commerce web application for Bharat Super Bazar, featuring a mode
 
 ## 🌟 Features
 
+- **Modern Authentication**: ChatGPT-style login with Google OAuth and email/password
+- **Google Sign-In**: One-click authentication with Google accounts
 - **Product Catalog**: Browse products across multiple categories (Garments, Uniforms, Footwear, Accessories, Hosiery, Gifts)
 - **Responsive Design**: Mobile-friendly interface that works on all devices
 - **Search & Filter**: Find products easily with search and category filters
 - **Shopping Cart**: Add products to cart and manage quantities
-- **User Authentication**: Secure login and registration system
+- **User Authentication**: Secure JWT-based authentication with bcrypt password hashing
 - **Admin Panel**: Manage products, orders, and users (admin access required)
 - **Order Management**: Place and track orders
+- **Production Ready**: Configured for deployment on Vercel and Render
 - **In-Memory Storage**: Works without MongoDB for quick setup
 
 ## 🚀 Tech Stack
@@ -20,6 +23,7 @@ A full-stack e-commerce web application for Bharat Super Bazar, featuring a mode
 - **React 19** - UI library
 - **Vite** - Build tool and dev server
 - **React Router** - Client-side routing
+- **Google OAuth** - @react-oauth/google for authentication
 - **Lucide React** - Icon library
 - **CSS3** - Styling
 
@@ -28,8 +32,9 @@ A full-stack e-commerce web application for Bharat Super Bazar, featuring a mode
 - **Node.js** - Runtime environment
 - **Express** - Web framework
 - **MongoDB** (optional) - Database
-- **JWT** - Authentication
+- **JWT** - Authentication tokens
 - **Bcrypt** - Password hashing
+- **Google Auth Library** - OAuth token verification
 
 ## 📦 Installation
 
@@ -64,13 +69,23 @@ A full-stack e-commerce web application for Bharat Super Bazar, featuring a mode
 
 4. **Configure environment variables**
 
-   Create a `.env` file in the `server` directory:
+   **Frontend** - Create `.env` in root directory:
+
+   ```env
+   VITE_API_URL=http://localhost:5001
+   VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+   ```
+
+   **Backend** - Create `.env` in the `server` directory:
 
    ```env
    PORT=5001
    MONGODB_URI=mongodb://localhost:27017/bharat-bazar
    JWT_SECRET=your_secret_key_here
+   GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
    ```
+
+   **Important**: See `GOOGLE_OAUTH_SETUP.md` for detailed Google OAuth setup instructions.
 
 5. **Start the development servers**
 
@@ -142,12 +157,23 @@ Bharat-Super-Bazar/
 
 ## 🔐 Authentication
 
-The app uses JWT-based authentication:
+The app features modern, ChatGPT-style authentication:
 
-- Register new users
-- Login with email and password
-- Protected routes for admin features
-- Role-based access control
+- **Google OAuth**: One-click sign-in with Google accounts
+- **Email/Password**: Traditional registration and login
+- **JWT Tokens**: Secure, stateless authentication
+- **Password Hashing**: Bcrypt for secure password storage
+- **Role-Based Access**: Customer, Admin, and Owner roles
+- **Protected Routes**: Middleware-based route protection
+
+See `QUICK_START.md` for setup instructions.
+
+## 📚 Documentation
+
+- **[Quick Start Guide](QUICK_START.md)** - Get up and running in 5 minutes
+- **[Google OAuth Setup](GOOGLE_OAUTH_SETUP.md)** - Detailed Google OAuth configuration
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Deploy to production (Vercel + Render)
+- **[Login Guide](LOGIN_GUIDE.md)** - User authentication documentation
 
 ## 📱 API Endpoints
 
@@ -161,6 +187,8 @@ The app uses JWT-based authentication:
 
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - Login user
+- `POST /api/auth/google` - Google OAuth login
+- `POST /api/auth/social` - Social login (Facebook, etc.)
 - `GET /api/auth/users` - Get all users (owner only)
 
 ### Orders

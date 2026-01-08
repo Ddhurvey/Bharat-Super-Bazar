@@ -1,10 +1,14 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import { verifyToken, isOwner } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Initialize Google OAuth Client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // In-memory user storage (fallback when MongoDB is not available)
 let inMemoryUsers = [];
@@ -211,6 +215,103 @@ router.post('/social', async (req, res) => {
 
     } catch (err) {
         console.error('🔥 Social Login error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Google OAuth Login
+router.post('/google', async (req, res) => {
+    console.log('🔐 Google OAuth attempt');
+    try {
+        const { token } = req.body;
+
+        if (!token) {
+            return res.status(400).json({ message: 'Google token is required' });
+        }
+
+        // Verify the Google token
+        let ticket;
+        try {
+            ticket = await googleClient.verifyIdToken({
+                idToken: token,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+        } catch (verifyError) {
+            console.error('❌ Google token verification failed:', verifyError);
+            return res.status(401).json({ message: 'Invalid Google token' });
+        }
+
+        const payload = ticket.getPayload();
+        const { email, name, picture } = payload;
+
+        console.log('✅ Google token verified:', email);
+
+        let user;
+        if (isMongoConnected()) {
+            console.log('💽 Using MongoDB for Google login');
+            user = await User.findOne({ email });
+            if (!user) {
+                console.log('🆕 Creating new Google user in Mongo');
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(Math.random().toString(36), salt);
+                
+                const userCount = await User.countDocuments();
+                const role = userCount === 0 ? 'owner' : 'user';
+                
+                user = new User({ 
+                    name, 
+                    email, 
+                    password: hashedPassword, 
+                    role,
+                    profilePicture: picture 
+                });
+                await user.save();
+            }
+        } else {
+            console.log('💾 Using in-memory storage for Google login');
+            user = inMemoryUsers.find(u => u.email === email);
+            if (!user) {
+                console.log('🆕 Creating new Google user in memory');
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(Math.random().toString(36), salt);
+                
+                const role = inMemoryUsers.length === 0 ? 'owner' : 'user';
+                
+                user = {
+                    _id: String(nextUserId++),
+                    name,
+                    email,
+                    password: hashedPassword,
+                    role,
+                    profilePicture: picture,
+                    createdAt: new Date()
+                };
+                inMemoryUsers.push(user);
+            } else {
+                console.log('✅ Found existing Google user in memory:', user.name);
+            }
+        }
+
+        console.log('🔑 Signing JWT token for Google user:', user._id);
+        if (!process.env.JWT_SECRET) {
+            console.warn('⚠️ JWT_SECRET missing, using fallback');
+            process.env.JWT_SECRET = 'fallback_secret';
+        }
+        const jwtToken = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+        res.json({
+            token: jwtToken,
+            user: { 
+                id: user._id, 
+                name: user.name, 
+                email: user.email, 
+                role: user.role,
+                profilePicture: user.profilePicture 
+            }
+        });
+
+    } catch (err) {
+        console.error('🔥 Google OAuth error:', err);
         res.status(500).json({ error: err.message });
     }
 });

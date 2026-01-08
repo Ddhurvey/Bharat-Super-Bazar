@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiCall } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -34,7 +35,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            const res = await fetch('/api/auth/login', {
+            const res = await apiCall('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -57,7 +58,7 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (name, email, password) => {
         try {
-            const res = await fetch('/api/auth/register', {
+            const res = await apiCall('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, email, password })
@@ -80,7 +81,7 @@ export const AuthProvider = ({ children }) => {
 
     const loginWithSocial = async (provider, socialData) => {
         try {
-            const res = await fetch('/api/auth/social', {
+            const res = await apiCall('/api/auth/social', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ provider, ...socialData })
@@ -101,6 +102,29 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const loginWithGoogle = async (credentialResponse) => {
+        try {
+            const res = await apiCall('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: credentialResponse.credential })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                setToken(data.token);
+                setCurrentUser(data.user);
+                return { success: true, message: 'Successfully logged in with Google' };
+            } else {
+                return { success: false, message: data.message || 'Google login failed' };
+            }
+        } catch (err) {
+            console.error('Google login error:', err);
+            return { success: false, message: 'Network error. Please try again.' };
+        }
+    };
+
     const logout = () => {
         setToken(null);
         setCurrentUser(null);
@@ -108,7 +132,7 @@ export const AuthProvider = ({ children }) => {
 
     const promoteUser = async (userId, newRole) => {
         try {
-            const res = await fetch(`/api/auth/promote/${userId}`, {
+            const res = await apiCall(`/api/auth/promote/${userId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -140,6 +164,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         loginWithSocial,
+        loginWithGoogle,
         logout,
         promoteUser,
         canEditContent,
