@@ -30,13 +30,39 @@ const LoginModal = ({ onClose }) => {
     };
 
     const handleSocialLogin = async (provider) => {
-        // Mock data for social login
-        const mockData = {
-             name: `${provider} User`,
-             email: `user_${Date.now()}@${provider.toLowerCase()}.com`
+        setError('');
+        
+        // Prompt user for their actual email
+        const email = prompt(`Enter your ${provider} email address:`);
+        if (!email) {
+            setError('Email is required for social login');
+            return;
+        }
+
+        // Verify email domain matches provider
+        const emailLower = email.toLowerCase();
+        if (provider === 'Google' && !emailLower.endsWith('@gmail.com') && !emailLower.includes('@google.com')) {
+            setError('Please use a valid Gmail address for Google login');
+            return;
+        }
+        if (provider === 'Facebook' && !emailLower.endsWith('@facebook.com') && !emailLower.includes('@fb.com')) {
+            // For Facebook, we'll accept any email since FB allows non-FB emails
+            // but we'll mark it as Facebook login
+        }
+
+        // Prompt for name
+        const name = prompt(`Enter your full name:`);
+        if (!name) {
+            setError('Name is required');
+            return;
+        }
+
+        const socialData = {
+            name: name.trim(),
+            email: email.trim()
         };
 
-        const res = await loginWithSocial(provider, mockData);
+        const res = await loginWithSocial(provider, socialData);
         if (res.success) {
             onClose();
         } else {

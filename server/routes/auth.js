@@ -14,18 +14,18 @@ let nextUserId = 1;
 (async () => {
     try {
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash('admin123', salt);
+        const hashedPassword = await bcrypt.hash('Dev@750', salt);
         inMemoryUsers.push({
             _id: 'owner_1',
-            name: 'Admin User',
-            email: 'admin@bharatbazar.com',
+            name: 'Devendra Dhurve',
+            email: 'devendradhur85@gmail.com',
             password: hashedPassword,
             role: 'owner',
             createdAt: new Date()
         });
-        console.log('👑 Default Admin initialized: admin@bharatbazar.com / admin123');
+        console.log('👑 Default Owner initialized: devendradhur85@gmail.com / Dev@750');
     } catch (err) {
-        console.error('Failed to initialize admin:', err);
+        console.error('Failed to initialize owner:', err);
     }
 })();
 
